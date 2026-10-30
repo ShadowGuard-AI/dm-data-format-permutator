@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # dm-data-format-permutator
 Randomly permutes the format of data within a column while preserving its inherent characteristics (e.g., date formats, currency formats, telephone number formats). Takes a CSV file and a column name as input. - Focused on Tools designed to generate or mask sensitive data with realistic-looking but meaningless values
 
