@@ -38,19 +38,27 @@ def permute_data_format(data, data_type, locale="en_US"):
     fake = Faker(locale)
     try:
         if data_type == 'date':
-            try:
-                # Attempt to parse the date in multiple common formats.
-                from dateutil import parser
-                date_obj = parser.parse(data)
-                return fake.date_time_this_decade().strftime('%Y-%m-%d') # Standard date format
-
-            except ValueError:
-                logging.warning(f"Could not parse date: {data}. Returning original value.")
-                return data # Return the original data if parsing fails
+            # Only the two formats detect_data_type recognises are parsed,
+            # with strptime from the standard library. The old code imported
+            # dateutil here, but python-dateutil was never declared in
+            # requirements.txt, so on a clean install every date silently
+            # fell through unchanged.
+            from datetime import datetime
+            for fmt in ('%Y-%m-%d', '%m/%d/%Y'):
+                try:
+                    datetime.strptime(data, fmt)
+                    return fake.date_time_this_decade().strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+            logging.warning(f"Could not parse date: {data}. Returning original value.")
+            return data
         elif data_type == 'currency':
             amount = float(data.replace('$', '').replace(',', ''))  # Remove currency symbols and commas
 
-            return f"${fake.random_number(digits=3)}.{fake.random_number(digits=2)}" # Basic currency format
+            # random_number returns an int, so the cents must be zero
+            # padded: without it about a fifth of outputs came out with a
+            # single decimal digit, which is not a currency format.
+            return f"${fake.random_number(digits=3)}.{fake.random_number(digits=2):02d}"
         elif data_type == 'telephone':
             return fake.phone_number()
         else:
