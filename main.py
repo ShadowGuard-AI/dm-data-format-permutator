@@ -3,6 +3,7 @@ import csv
 import logging
 import random
 import sys
+from pathlib import Path
 from faker import Faker
 
 # Configure logging
@@ -108,15 +109,28 @@ def main():
     output_file = args.output_file or csv_file.replace(".csv", "_masked.csv") #Default output file name
     locale = args.locale
 
+    # The output may not name the input file, in any spelling. Resolved
+    # paths are compared, so a symlink alias is caught as well as the
+    # same string. Refuse before any file is opened.
+    if Path(output_file).resolve() == Path(csv_file).resolve():
+        logging.error("Output file must not be the input file. Choose a different output path.")
+        sys.exit(1)
+
     try:
-        with open(csv_file, 'r', newline='') as infile, \
-                open(output_file, 'w', newline='') as outfile:
-
+        # Read and validate the whole input first. The output file is
+        # opened only after this succeeds, so a failed run (missing
+        # column, empty input, undecodable input) creates no output
+        # file. The old order opened the output first, which truncated
+        # the input itself when both names pointed at it and left a
+        # created output file behind on ordinary failures.
+        with open(csv_file, 'r', newline='') as infile:
             reader = csv.reader(infile)
-            writer = csv.writer(outfile)
 
-            header = next(reader)  # Read the header row
-            writer.writerow(header)  # Write the header row to the output file
+            try:
+                header = next(reader)  # Read the header row
+            except StopIteration:
+                logging.error(f"Input file is empty: {csv_file}")
+                sys.exit(1)
 
             try:
                 column_index = header.index(column_name)
@@ -124,24 +138,41 @@ def main():
                 logging.error(f"Column '{column_name}' not found in the CSV file.")
                 sys.exit(1)
 
+            output_rows = []
+            replaced = 0
             for row in reader:
                 try:
                     original_data = row[column_index]
                     data_type = detect_data_type(original_data)
                     masked_data = permute_data_format(original_data, data_type, locale)
+                    if masked_data != original_data:
+                        replaced += 1
                     row[column_index] = masked_data
-                    writer.writerow(row)
+                    output_rows.append(row)
                 except IndexError:
                     logging.warning(f"Row has fewer columns than expected. Skipping row.")
-                    writer.writerow(row) # Still write the row to avoid shifting data unexpectedly
+                    output_rows.append(row) # Still write the row to avoid shifting data unexpectedly
                 except Exception as e:
                     logging.error(f"Error processing row: {e}. Writing original row.")
-                    writer.writerow(row) # Write original row on error
+                    output_rows.append(row) # Write original row on error
+
+        if replaced == 0:
+            # Nothing in the named column was permuted, so this run must
+            # not report completion and must not write an output file.
+            print("No values were permuted.")
+            sys.exit(1)
+
+        with open(output_file, 'w', newline='') as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(header)
+            writer.writerows(output_rows)
         logging.info(f"Data masking completed. Output written to {output_file}")
 
     except FileNotFoundError:
         logging.error(f"File '{csv_file}' not found.")
         sys.exit(1)
+    except SystemExit:
+        raise
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
         sys.exit(1)
