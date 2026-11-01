@@ -36,6 +36,10 @@ def permute_data_format(data, data_type, locale="en_US"):
     Returns:
         str: The permuted data, or the original data if permutation fails.
     """
+    # A new Faker is built for every value this function is called
+    # on, which in main is once per row of the column. Nothing seeds
+    # any of them, so no run can be repeated, and construction cost is
+    # paid per cell rather than once per file.
     fake = Faker(locale)
     try:
         if data_type == 'date':
@@ -54,6 +58,10 @@ def permute_data_format(data, data_type, locale="en_US"):
             logging.warning(f"Could not parse date: {data}. Returning original value.")
             return data
         elif data_type == 'currency':
+            # The amount is parsed only to prove the value parses. The
+            # replacement is always a three digit figure, so a salary
+            # and a coffee price come out at the same scale: the dollar
+            # and cents shape is kept, the magnitude is not.
             amount = float(data.replace('$', '').replace(',', ''))  # Remove currency symbols and commas
 
             # random_number returns an int, so the cents must be zero
@@ -85,6 +93,10 @@ def detect_data_type(data):
         return 'unknown'  # Handle empty or non-string data
     
     # Basic date detection
+    # Every pattern here is a prefix test: re.match anchors at the
+    # start and none of the patterns ends with a $ anchor, so a value
+    # only has to begin like a date, an amount, or a phone number to
+    # be classified as one, whatever follows the matched prefix.
     import re
     if re.match(r'\d{4}-\d{2}-\d{2}', data):
         return 'date'
