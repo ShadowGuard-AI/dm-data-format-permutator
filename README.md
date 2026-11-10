@@ -18,14 +18,14 @@ Randomly permutes the format of data within a column while preserving its inhere
 ![Major separator](sep-heavy.svg)
 
 ## Install
-`git clone https://github.com/ShadowStrikeHQ/dm-data-format-permutator`
+`git clone https://github.com/ShadowGuard-AI/dm-data-format-permutator`
 
 > Wax tablet: the README install line names an older organisation.
 
 ![Minor separator](sep-light.svg)
 
 ## Usage
-`./dm-data-format-permutator [params]`
+`python3 main.py csv_file column_name [options]`
 
 ![Minor separator](sep-light.svg)
 
@@ -52,7 +52,7 @@ Randomly permutes the format of data within a column while preserving its inhere
 ![Minor separator](sep-light.svg)
 
 ## License
-Copyright (c) ShadowStrikeHQ
+This project is released under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ![Major separator](sep-heavy.svg)
 
